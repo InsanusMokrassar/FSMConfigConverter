@@ -15,8 +15,19 @@ private val commands = mapOf(
                     if (args.isEmpty()) {
                         showHelp(args)
                     } else {
-                        val config = File(args[0]).readText()
-                        fromConfig(config)
+                        val inputFile = File(args[0])
+                        val config = inputFile.readText()
+                        val preStates = compileFromConfig(config)
+
+                        val tempContent = getContent(inputFile.nameWithoutExtension, preStates)
+                        val tempFile = File(inputFile.parent, "temp_${inputFile.nameWithoutExtension}.md")
+                        if (tempFile.exists()) {
+                            tempFile.delete()
+                        }
+                        tempFile.createNewFile()
+                        tempFile.appendText(tempContent)
+
+                        val outputFile = File(inputFile.parent, "out_${inputFile.name}")
                     }
                 }
         ),
@@ -35,5 +46,35 @@ fun main(args: Array<String>) {
 }
 
 fun getHelp(): String {
-    return "Usage:\ncmd <input file path> <output file path> <support file path>"
+    return "Usage:\ncmd <input file path> [<support file path>] <output file path>"
+}
+
+fun getContent(statesName: String, preStates: List<PreState>): String {
+    val builder = StringBuilder()
+    builder.append("# $statesName\n\n")
+    builder.append("```\n${getRules(false, preStates)}\n\n${getRules(true, preStates)}\n```\n\n")
+    builder.append("| N | Accept | Error | Return | Stack | Next | Regex |\n")
+    builder.append("|---|--------|-------|--------|-------|------|-------|\n")
+    preStates.forEach {
+        builder.append("| ${it.number} | ${it.isAccept} | ${it.isError} | ${it.isReturn} | ${it.isStack} " +
+                "| ${if (it.nextState == null) "-" else it.nextState!!.number.toString()} | ${it.regex} |\n")
+    }
+    return builder.toString()
+}
+
+fun getRules(isNumeric: Boolean, preStates: List<PreState>): String {
+    val builder = StringBuilder()
+    val definitions = preStates.filter { it.isDefinition }
+    definitions.forEach {
+        var current: PreState? = it
+        while (current != null) {
+            builder.append(current.toString(isNumeric))
+            if (current.isDefinition) {
+                builder.append("::=")
+            }
+            current = current.toRightInRow
+        }
+        builder.append("\n")
+    }
+    return builder.toString()
 }

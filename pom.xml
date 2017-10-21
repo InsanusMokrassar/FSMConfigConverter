@@ -212,5 +212,11 @@
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.github.insanusmokrassar</groupId>
+            <artifactId>FSM</artifactId>
+            <version>1.0</version>
+        </dependency>
     </dependencies>
 </project>

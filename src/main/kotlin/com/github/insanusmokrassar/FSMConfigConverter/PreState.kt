@@ -1,5 +1,7 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
+import com.github.insanusmokrassar.FSM.core.SimpleState
+import com.github.insanusmokrassar.FSM.core.State
 import java.util.regex.PatternSyntaxException
 
 val ruleRegex: Regex = Regex("^<((\\\\>)|[^>])+>")
@@ -23,7 +25,7 @@ private fun String.startsWith(regex: Regex): Boolean {
     } ?: false
 }
 
-fun fromConfig(config: String): List<PreState> {
+fun compileFromConfig(config: String): List<PreState> {
     val statesRows = ArrayList<PreState>()
     var currentRowRoot: PreState? = null
     var mutableConfig = config
@@ -91,25 +93,121 @@ fun fromConfig(config: String): List<PreState> {
     }
     preStates.forEach {
         it.number = preStates.indexOf(it)
-        if (preStates.lastIndex != it.number) {
-            it.nextState = preStates[it.number!! + 1]
+    }
+    val lookedPositions = ArrayList<Int>()
+    preStates.forEachIndexed { index, preState -> preStates.regex(index, lookedPositions) }
+    return preStates
+}
+
+fun List<PreState>.regex(
+        position: Int,
+        previousPositions: MutableList<Int>): String {
+    val state = get(position)
+    if (!previousPositions.contains(position)) {
+        previousPositions.add(position)
+        if (state.regex.isEmpty()) {
+            filter {
+                (it.text == state.text && it.isRule && it.number != state.number)
+                || (state.isDefinition && state.toRightInRow == it)
+            }.forEach {
+                it.nextState ?. let {
+                    state.regex += regex(indexOf(it), previousPositions)
+                } ?: {
+                    if (it.isReturn) {
+                        state.regex = regexForReturn(position, previousPositions)
+                    }
+                }()
+
+            }
+            state.regex = Regex(state.regex).pattern
         }
     }
-    return preStates
+    return state.regex
+}
+
+private fun List<PreState>.regexForReturn(
+        position: Int,
+        previousPositions: MutableList<Int>,
+        previousReturnPositions: MutableList<Int> = ArrayList()
+): String {
+    val state = get(position)
+    if (previousReturnPositions.contains(position)) {
+        return ""
+    }
+    previousReturnPositions.add(position)
+    val definition = state.definition
+    var regex = ""
+    filter {
+        !it.isDefinition && it.isRule && it.text == definition.text
+    }.forEach {
+        regex += it.toRightInRow ?. let {
+            regex(indexOf(it), previousPositions)
+        } ?: {
+            regexForReturn(indexOf(it), previousPositions, previousReturnPositions)
+        }()
+    }
+    return regex
 }
 
 data class PreState internal constructor(
         var isRule: Boolean = true,
         var text: String? = null,
-        var number: Int? = null,
-        var nextState: PreState? = null) {
+        var number: Int? = null) {
+
+    private var toLeftInRow: PreState? = null
+
+    val state: State?
+        get() {
+            return if (regex.isEmpty()) {
+                null
+            } else {
+                SimpleState(
+                        isAccept,
+                        isError,
+                        isStack,
+                        Regex(regex),
+                        nextState?.number
+                )
+            }
+        }
+
+    val nextState: PreState?
+        get() {
+            return if (toRightInRow == null || isStack) {
+                null
+            } else {
+                toRightInRow
+            }
+        }
 
     var toRightInRow: PreState? = null
         private set
-    private var toLeftInRow: PreState? = null
+
+    var regex: String = ""
+        get() {
+            return if (isRule) {
+                field
+            } else {
+                text ?: ""
+            }
+        }
+        set(value) {
+            if (isRule) {
+                field = regex
+            } else {
+                throw IllegalStateException("You can't set regex for field manualy")
+            }
+        }
 
     val isDefinition: Boolean
         get() = isRule && toLeftInRow == null
+
+    val definition: PreState
+        get() = if (isDefinition) {
+            this
+        } else {
+            toLeftInRow ?. definition ?: this
+        }
 
     val isAccept: Boolean
         get() = !isRule
@@ -164,5 +262,17 @@ data class PreState internal constructor(
         )
     }
 
+    fun toString(isNumeric: Boolean = false): String {
+        val pretext = if (isRule) {
+            "<$text>"
+        } else {
+            text ?: ""
+        }
+        return if (isNumeric) {
+            "$number$pretext"
+        } else {
+            pretext
+        }
+    }
 
 }
