@@ -49,24 +49,24 @@ fun getHelp(): String {
     return "Usage:\ncmd <input file path> [<support file path>] <output file path>"
 }
 
-fun getContent(statesName: String, preStates: List<PreState>): String {
+fun getContent(statesName: String, previewStates: List<PreviewState>): String {
     val builder = StringBuilder()
     builder.append("# $statesName\n\n")
-    builder.append("```\n${getRules(false, preStates)}\n\n${getRules(true, preStates)}\n```\n\n")
+    builder.append("```\n${getRules(false, previewStates)}\n\n${getRules(true, previewStates)}\n```\n\n")
     builder.append("| N | Accept | Error | Return | Stack | Next | Regex |\n")
     builder.append("|---|--------|-------|--------|-------|------|-------|\n")
-    preStates.forEach {
+    previewStates.forEach {
         builder.append("| ${it.number} | ${it.isAccept} | ${it.isError} | ${it.isReturn} | ${it.isStack} " +
                 "| ${if (it.nextState == null) "-" else it.nextState!!.number.toString()} | ${it.regex} |\n")
     }
     return builder.toString()
 }
 
-fun getRules(isNumeric: Boolean, preStates: List<PreState>): String {
+fun getRules(isNumeric: Boolean, previewStates: List<PreviewState>): String {
     val builder = StringBuilder()
-    val definitions = preStates.filter { it.isDefinition }
+    val definitions = previewStates.filter { it.isDefinition }
     definitions.forEach {
-        var current: PreState? = it
+        var current: PreviewState? = it
         while (current != null) {
             builder.append(current.toString(isNumeric))
             if (current.isDefinition) {
