@@ -9,15 +9,11 @@ val openRuleRegex: Regex = Regex("^<")
 val closeRuleRegex: Regex = Regex(">$")
 
 val multiChoiceRegex = Regex("\\[.+]")
-val openMultiChoiceRegex = Regex("^\\[")
-val closeMultiChoiceRegex = Regex("]$")
 val nonMultiChoiceRegex = Regex("\\\\\\[")
 
 val partsDelimiterRegex: Regex = Regex("^::=")
 
 val rowsDelimiter: Regex = Regex("^[\n\r]+")
-
-
 
 private fun String.startsWith(regex: Regex): Boolean {
     return regex.find(this) ?. let {
@@ -92,29 +88,6 @@ fun compileFromConfig(config: String): List<PreviewState> {
     }
 }
 
-fun List<PreviewState>.findUsages(definitionState: PreviewState): List<PreviewState> {
-    return filter {
-        !it.isDefinition && it.isRule && definitionState.text == it.text
-    }
-}
-
-fun PreviewState.findDefinitions(): List<PreviewState> {
-    val root = definition.top
-    var current: PreviewState? = root
-    val definitions = ArrayList<PreviewState>()
-    while (current != null) {
-        current = if (current.isDefinition) {
-            if (current.text == text) {
-                definitions.add(current)
-            }
-            current.lower
-        } else {
-            null
-        }
-    }
-    return definitions
-}
-
 data class PreviewState internal constructor(
         var isRule: Boolean = true,
         var text: String? = null,
@@ -122,25 +95,10 @@ data class PreviewState internal constructor(
 
     private var toLeftInRow: PreviewState? = null
 
-    val state: State?
-        get() {
-            return if (regex.isEmpty()) {
-                null
-            } else {
-                SimpleState(
-                        isAccept,
-                        isError,
-                        isStack,
-                        Regex(regex),
-                        nextState?.number
-                )
-            }
-        }
-
     val nextState: PreviewState?
         get() {
             return if (isRule && (toRightInRow == null || isStack)) {
-                this.findDefinitions().first()
+                this.definitions.first()
             } else {
                 toRightInRow
             }
@@ -151,7 +109,7 @@ data class PreviewState internal constructor(
 
     private var toTop: PreviewState? = null
 
-    val top: PreviewState
+    private val top: PreviewState
         get() {
             return toTop ?. top ?: {
                 this
@@ -183,14 +141,14 @@ data class PreviewState internal constructor(
                         nextState!!.regex
                     } else {
                         var resultField = ""
-                        findDefinitions().forEach {
-                            resultField += "|(${it.regex})"
+                        definitions.forEach {
+                            resultField += it.regex
                         }
-                        resultField.replaceFirst("|", "")
+                        "[$resultField]"
                     }
                 } else {
                     if (text == "\\z") {
-                        toList().findUsages(definition).getNextRegex()
+                        definition.usages.getNextRegex()
                     } else {
                         text ?: ""
                     }
@@ -219,7 +177,7 @@ data class PreviewState internal constructor(
                     regexBuilder.append(it.regex)
                 } ?: {
                     regexBuilder.append(
-                            it.toList().findUsages(it.definition).getNextRegex(wasIn)
+                            it.definition.usages.getNextRegex(wasIn)
                     )
                 }()
             }
@@ -230,11 +188,36 @@ data class PreviewState internal constructor(
     val isDefinition: Boolean
         get() = isRule && toLeftInRow == null
 
-    val definition: PreviewState
+    private val definition: PreviewState
         get() = if (isDefinition) {
             this
         } else {
             toLeftInRow ?. definition ?: this
+        }
+
+    private val definitions: List<PreviewState>
+        get() {
+            val root = definition.top
+            var current: PreviewState? = root
+            val definitions = ArrayList<PreviewState>()
+            while (current != null) {
+                current = if (current.isDefinition) {
+                    if (current.text == text) {
+                        definitions.add(current)
+                    }
+                    current.lower
+                } else {
+                    null
+                }
+            }
+            return definitions
+        }
+
+    private val usages: List<PreviewState>
+        get() {
+            return toList().filter {
+                !it.isDefinition && it.isRule && this.text == it.text
+            }
         }
 
     val isAccept: Boolean
@@ -324,58 +307,19 @@ data class PreviewState internal constructor(
         }
         return preStates
     }
-}
 
-/*
-
-
-fun List<PreviewState>.regex(
-        position: Int,
-        previousPositions: MutableList<Int>): String {
-    val state = get(position)
-    if (!previousPositions.contains(position)) {
-        previousPositions.add(position)
-        if (state.regex.isEmpty()) {
-            filter {
-                (it.text == state.text && it.isRule && it.number != state.number)
-                || (state.isDefinition && state.toRightInRow == it)
-            }.forEach {
-                it.nextState ?. let {
-                    state.regex += regex(indexOf(it), previousPositions)
-                } ?: {
-                    if (it.isReturn) {
-                        state.regex = regexForReturn(position, previousPositions)
-                    }
-                }()
-
+    val toFSMState: State?
+        get() {
+            return if (regex.isEmpty()) {
+                null
+            } else {
+                SimpleState(
+                        isAccept,
+                        isError,
+                        isStack,
+                        Regex(regex),
+                        nextState?.number
+                )
             }
-            state.regex = Regex(state.regex).pattern
         }
-    }
-    return state.regex
 }
-
-private fun List<PreviewState>.regexForReturn(
-        position: Int,
-        previousPositions: MutableList<Int>,
-        previousReturnPositions: MutableList<Int> = ArrayList()
-): String {
-    val state = get(position)
-    if (previousReturnPositions.contains(position)) {
-        return ""
-    }
-    previousReturnPositions.add(position)
-    val definition = state.definition
-    var regex = ""
-    filter {
-        !it.isDefinition && it.isRule && it.text == definition.text
-    }.forEach {
-        regex += it.toRightInRow ?. let {
-            regex(indexOf(it), previousPositions)
-        } ?: {
-            regexForReturn(indexOf(it), previousPositions, previousReturnPositions)
-        }()
-    }
-    return regex
-}
- */

@@ -1,5 +1,6 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
+import com.github.insanusmokrassar.FSM.core.toConfigString
 import java.io.File
 
 private val showHelp = {
@@ -27,7 +28,12 @@ private val commands = mapOf(
                         tempFile.createNewFile()
                         tempFile.appendText(tempContent)
 
-                        val outputFile = File(inputFile.parent, "out_${inputFile.name}")
+                        val outputFile = File(inputFile.parent, "out_${inputFile.nameWithoutExtension}.json")
+                        if (outputFile.exists()) {
+                            outputFile.delete()
+                        }
+                        outputFile.createNewFile()
+                        outputFile.appendText(getConfig(preStates))
                     }
                 }
         ),
@@ -46,7 +52,7 @@ fun main(args: Array<String>) {
 }
 
 fun getHelp(): String {
-    return "Usage:\ncmd <input file path> [<support file path>] <output file path>"
+    return "Usage:\ncmd <input file path>"
 }
 
 fun getContent(statesName: String, previewStates: List<PreviewState>): String {
@@ -60,6 +66,17 @@ fun getContent(statesName: String, previewStates: List<PreviewState>): String {
                 "| ${if (it.nextState == null) "-" else it.nextState!!.number.toString()} | ${it.regex} |\n")
     }
     return builder.toString()
+}
+
+fun getConfig(preStates: List<PreviewState>): String {
+    val configBuilder = StringBuilder()
+    configBuilder.append("[")
+    preStates.forEach {
+        configBuilder.append(
+                "${it.toFSMState!!.toConfigString()},"
+        )
+    }
+    return configBuilder.toString().replace(Regex(",$"), "]\n")
 }
 
 fun getRules(isNumeric: Boolean, previewStates: List<PreviewState>): String {
