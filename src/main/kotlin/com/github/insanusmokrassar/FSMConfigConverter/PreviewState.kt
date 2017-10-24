@@ -31,7 +31,7 @@ fun compileFromConfig(config: String): List<PreviewState> {
         if (mutableConfig.startsWith(ruleRegex)) {
             val partWithRule = ruleRegex.find(mutableConfig)!!.groupValues.first()
             mutableConfig = mutableConfig.replaceFirst(ruleRegex, "")
-            state.text = partWithRule
+            state.name = partWithRule
                     .replaceFirst(openRuleRegex, "")
                     .replaceFirst(closeRuleRegex, "")
             state.isRule = true
@@ -43,7 +43,7 @@ fun compileFromConfig(config: String): List<PreviewState> {
             }
             if (mutableConfig.startsWith(rowsDelimiter)) {
                 if (currentRowRoot!!.toRightInRow == null) {
-                    state.text = "\\z"
+                    state.name = "\\z"
                     state.isRule = false
                     currentRowRoot.addRight(
                             state
@@ -66,7 +66,7 @@ fun compileFromConfig(config: String): List<PreviewState> {
                     mutableConfig.first() + ""
                 }
             }
-            state.text = try {
+            state.name = try {
                 Regex(text).pattern
             } catch (e: PatternSyntaxException) {
                 Regex("\\" + text).pattern
@@ -90,7 +90,7 @@ fun compileFromConfig(config: String): List<PreviewState> {
 
 data class PreviewState internal constructor(
         var isRule: Boolean = true,
-        var text: String? = null,
+        var name: String? = null,
         var number: Int? = null) {
 
     private var toLeftInRow: PreviewState? = null
@@ -98,7 +98,7 @@ data class PreviewState internal constructor(
     val nextState: PreviewState?
         get() {
             return if (isRule && (toRightInRow == null || isStack)) {
-                this.definitions.first()
+                this.declarations.first()
             } else {
                 toRightInRow
             }
@@ -138,19 +138,19 @@ data class PreviewState internal constructor(
             return if (field.isEmpty()) {
                 field = if (isRule) {
                     if (isDefinition) {
-                        nextState!!.regex
+                        toRightInRow !!. regex
                     } else {
                         var resultField = ""
-                        definitions.forEach {
+                        declarations.forEach {
                             resultField += it.regex
                         }
                         "[$resultField]"
                     }
                 } else {
-                    if (text == "\\z") {
-                        definition.usages.getNextRegex()
+                    if (name == "\\z") {
+                        definition.usages.getRegexToRight()
                     } else {
-                        text ?: ""
+                        name ?: ""
                     }
                 }
                 field = Regex(field).pattern
@@ -168,7 +168,7 @@ data class PreviewState internal constructor(
             }
         }
 
-    private fun List<PreviewState>.getNextRegex(wasIn: MutableList<PreviewState> = ArrayList()): String {
+    private fun List<PreviewState>.getRegexToRight(wasIn: MutableList<PreviewState> = ArrayList()): String {
         val regexBuilder = StringBuilder()
         forEach {
             if (!wasIn.contains(it)) {
@@ -177,7 +177,7 @@ data class PreviewState internal constructor(
                     regexBuilder.append(it.regex)
                 } ?: {
                     regexBuilder.append(
-                            it.definition.usages.getNextRegex(wasIn)
+                            it.definition.usages.getRegexToRight(wasIn)
                     )
                 }()
             }
@@ -195,14 +195,14 @@ data class PreviewState internal constructor(
             toLeftInRow ?. definition ?: this
         }
 
-    private val definitions: List<PreviewState>
+    private val declarations: List<PreviewState>
         get() {
             val root = definition.top
             var current: PreviewState? = root
             val definitions = ArrayList<PreviewState>()
             while (current != null) {
                 current = if (current.isDefinition) {
-                    if (current.text == text) {
+                    if (current.name == name) {
                         definitions.add(current)
                     }
                     current.lower
@@ -216,16 +216,16 @@ data class PreviewState internal constructor(
     private val usages: List<PreviewState>
         get() {
             return toList().filter {
-                !it.isDefinition && it.isRule && this.text == it.text
+                !it.isDefinition && it.isRule && this.name == it.name
             }
         }
 
     val isAccept: Boolean
-        get() = !isRule && text != "\\z"
+        get() = !isRule && name != "\\z"
 
     val isError: Boolean
         get() = !isDefinition || lower ?.let {
-            !(it.isDefinition && it.text == text)
+            !it.isDefinition || it.name != name
         } ?: true
 
     val isReturn: Boolean
@@ -269,15 +269,15 @@ data class PreviewState internal constructor(
         ).plus(
                 number ?: "-"
         ).plus(
-                " $text"
+                " $name"
         )
     }
 
     fun toString(isNumeric: Boolean = false): String {
         val pretext = if (isRule) {
-            "<$text>"
+            "<$name>"
         } else {
-            text ?: ""
+            name ?: ""
         }
         return if (isNumeric) {
             "$number$pretext"
