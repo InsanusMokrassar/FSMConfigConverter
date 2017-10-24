@@ -221,7 +221,7 @@ data class PreviewState internal constructor(
         }
 
     val isAccept: Boolean
-        get() = !isRule
+        get() = !isRule && text != "\\z"
 
     val isError: Boolean
         get() = !isDefinition || lower ?.let {
@@ -310,16 +310,18 @@ data class PreviewState internal constructor(
 
     val toFSMState: State?
         get() {
-            return if (regex.isEmpty()) {
-                null
-            } else {
-                SimpleState(
-                        isAccept,
-                        isError,
-                        isStack,
-                        Regex(regex),
-                        nextState?.number
+            return SimpleState(
+                    isAccept,
+                    isError,
+                    isStack,
+                    Regex(
+                            if (regex.isEmpty()) {
+                                "\\z"
+                            } else {
+                                regex
+                            }
+                    ),
+                    nextState?.number
                 )
-            }
         }
 }
