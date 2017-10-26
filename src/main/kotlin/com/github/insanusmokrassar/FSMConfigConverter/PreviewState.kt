@@ -27,8 +27,13 @@ val preCheck = fromConfig(
         JSONIObject(PreviewState::class.java.classLoader.getResourceAsStream("scheme.json"))
 )
 
+@Throws(IllegalArgumentException::class)
 fun compileFromConfig(config: String): List<PreviewState> {
-    preCheck(config)
+    try {
+        preCheck(config)
+    } catch (e: Exception) {
+        throw IllegalArgumentException("You have problems with config", e)
+    }
     var previousRowRoot: PreviewState? = null
     var currentRowRoot: PreviewState? = null
     var mutableConfig = config
