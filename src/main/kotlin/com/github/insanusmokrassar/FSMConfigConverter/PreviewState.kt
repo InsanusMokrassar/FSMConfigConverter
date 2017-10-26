@@ -80,23 +80,30 @@ fun compileFromConfig(config: String): List<PreviewState> {
                 currentRowRoot = null
                 continue
             }
-            val text: String = if (mutableConfig.startsWith(multiChoiceRegex)) {
+            state.name = if (mutableConfig.startsWith(multiChoiceRegex)) {
                 val resultRegex = Regex(multiChoiceRegex.find(mutableConfig)?.value ?: "")
+                mutableConfig = mutableConfig.replaceFirst(resultRegex.pattern, "")
                 resultRegex.pattern
             } else {
                 if (mutableConfig.startsWith(nonMultiChoiceRegex)) {
-                    mutableConfig = mutableConfig.replaceFirst(nonMultiChoiceRegex, "[")
-                    "["
+                    val text = nonMultiChoiceRegex.find(mutableConfig)!!.value
+                    mutableConfig = mutableConfig.replaceFirst(text, "")
+                    text
                 } else {
-                    mutableConfig.first() + ""
+                    var text = "${mutableConfig.first()}"
+                    mutableConfig = mutableConfig.replaceFirst(text, "")
+                    text = try {
+                        Regex("[$text]").pattern
+                    } catch (e: PatternSyntaxException) {
+                        if (text.isEmpty()) {
+                            Regex("()").pattern
+                        } else {
+                            Regex("\\" + text).pattern
+                        }
+                    }
+                    text
                 }
             }
-            state.name = try {
-                Regex(text).pattern
-            } catch (e: PatternSyntaxException) {
-                Regex("\\" + text).pattern
-            }
-            mutableConfig = mutableConfig.replaceFirst(text, "")
             state.isRule = false
         }
         currentRowRoot ?. addRight(state) ?: {
