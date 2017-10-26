@@ -2,10 +2,26 @@ package com.github.insanusmokrassar.FSMConfigConverter
 
 import com.github.insanusmokrassar.FSM.core.toConfigString
 import java.io.File
+import java.util.*
 
 private val showHelp = {
     _: Array<String> ->
     println(getHelp())
+}
+
+private val interactiveInputCompleteRegex = Regex("\n\n")
+
+private val interactiveMode = {
+    _: Array<String> ->
+    println("Write your scheme. For completing insert double new line")
+    var config = ""
+    val scanner = Scanner(System.`in`)
+    while (interactiveInputCompleteRegex.find(config) == null) {
+        config += "${scanner.nextLine()}\n"
+    }
+    val preStates = compileFromConfig(config)
+    println(getContent("Interactive", preStates))
+    println(getConfig(preStates))
 }
 
 private val commands = mapOf(
@@ -14,7 +30,7 @@ private val commands = mapOf(
                 {
                     args ->
                     if (args.isEmpty()) {
-                        showHelp(args)
+                        interactiveMode(args)
                     } else {
                         val inputFile = File(args[0])
                         val config = inputFile.readText()
@@ -38,6 +54,14 @@ private val commands = mapOf(
                 }
         ),
         Pair(
+                "-i",
+                interactiveMode
+        ),
+        Pair(
+                "--interactive",
+                interactiveMode
+        ),
+        Pair(
                 "--help",
                 showHelp
         )
@@ -52,7 +76,7 @@ fun main(args: Array<String>) {
 }
 
 fun getHelp(): String {
-    return "Usage:\ncmd <input file path>"
+    return "Usage:\n'cmd <input file path>'\n'-i' or '--interactive' for use interactive mod"
 }
 
 fun getContent(statesName: String, previewStates: List<PreviewState>): String {
