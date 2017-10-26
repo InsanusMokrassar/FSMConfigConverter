@@ -17,10 +17,23 @@ val partsDelimiterRegex: Regex = Regex("^::=")
 
 val rowsDelimiter: Regex = Regex("^[\n\r]+")
 
+val redundantGroup: Regex = Regex("^\\([^)]+\\)$")
+val redundantGroupStart: Regex = Regex("^\\(")
+val redundantGroupEnd: Regex = Regex("\\)$")
+
 private fun String.startsWith(regex: Regex): Boolean {
     return regex.find(this) ?. let {
         startsWith(it.value)
     } ?: false
+}
+
+private fun String.removeRedundantGroups(): String {
+    var result = this
+    while (redundantGroup.matches(result)) {
+        result = redundantGroupStart.replace(result, "")
+        result = redundantGroupEnd.replace(result, "")
+    }
+    return result
 }
 
 val preCheck = fromConfig(
@@ -145,9 +158,13 @@ data class PreviewState internal constructor(
             }
         }
 
+    private var regexInited = false
     var regex: String = ""
         get() {
-            return if (field.isEmpty()) {
+            return if (regexInited) {
+                field
+            } else {
+                regexInited = true
                 field = if (isRule) {
                     if (isDefinition) {
                         toRightInRow !!. regex
@@ -165,16 +182,14 @@ data class PreviewState internal constructor(
                         name ?: ""
                     }
                 }
-                field = "(${Regex(field).pattern})"
-                field
-            } else {
+                field = "(${Regex(field.removeRedundantGroups()).pattern})"
                 field
             }
-
         }
         set(value) {
             if (isRule) {
                 field = regex
+                regexInited = true
             } else {
                 throw IllegalStateException("You can't set regex for field manualy")
             }
