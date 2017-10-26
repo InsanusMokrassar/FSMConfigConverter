@@ -2,13 +2,15 @@ package com.github.insanusmokrassar.FSMConfigConverter
 
 import com.github.insanusmokrassar.FSM.core.SimpleState
 import com.github.insanusmokrassar.FSM.core.State
+import com.github.insanusmokrassar.FSM.core.fromConfig
+import com.github.insanusmokrassar.IObjectKRealisations.JSONIObject
 import java.util.regex.PatternSyntaxException
 
 val ruleRegex: Regex = Regex("^<((\\\\>)|[^>])+>")
 val openRuleRegex: Regex = Regex("^<")
 val closeRuleRegex: Regex = Regex(">$")
 
-val multiChoiceRegex = Regex("\\[.+]")
+val multiChoiceRegex = Regex("\\[[^]]+]")
 val nonMultiChoiceRegex = Regex("\\\\\\[")
 
 val partsDelimiterRegex: Regex = Regex("^::=")
@@ -21,7 +23,12 @@ private fun String.startsWith(regex: Regex): Boolean {
     } ?: false
 }
 
+val preCheck = fromConfig(
+        JSONIObject(PreviewState::class.java.classLoader.getResourceAsStream("scheme.json"))
+)
+
 fun compileFromConfig(config: String): List<PreviewState> {
+    preCheck(config)
     var previousRowRoot: PreviewState? = null
     var currentRowRoot: PreviewState? = null
     var mutableConfig = config
@@ -142,9 +149,9 @@ data class PreviewState internal constructor(
                     } else {
                         var resultField = ""
                         declarations.forEach {
-                            resultField += it.regex
+                            resultField += "|${it.regex}"
                         }
-                        "[$resultField]"
+                        resultField.substring(1)
                     }
                 } else {
                     if (name == "\\z") {
@@ -153,7 +160,7 @@ data class PreviewState internal constructor(
                         name ?: ""
                     }
                 }
-                field = Regex(field).pattern
+                field = "(${Regex(field).pattern})"
                 field
             } else {
                 field
@@ -220,8 +227,11 @@ data class PreviewState internal constructor(
             }
         }
 
+    private val isFinal: Boolean
+        get() = nextState == null && !isReturn
+
     val isAccept: Boolean
-        get() = !isRule && name != "\\z"
+        get() = !isRule && (name != "\\z" || isFinal)
 
     val isError: Boolean
         get() = !isDefinition || lower ?.let {
@@ -229,7 +239,12 @@ data class PreviewState internal constructor(
         } ?: true
 
     val isReturn: Boolean
-        get() = !isStack && nextState == null
+        get() = !isStack
+                && !isRule
+                && nextState == null
+                && definition.usages.firstOrNull {
+                    it.isStack
+                } != null
 
     val isStack: Boolean
         get() = !isDefinition && isRule && toRightInRow != null
@@ -314,13 +329,11 @@ data class PreviewState internal constructor(
                     isAccept,
                     isError,
                     isStack,
-                    Regex(
-                            if (regex.isEmpty()) {
-                                "\\z"
-                            } else {
-                                regex
-                            }
-                    ),
+                    if (regex.isEmpty()) {
+                        Regex("\\z")
+                    } else {
+                        Regex(regex)
+                    },
                     nextState?.number
                 )
         }
