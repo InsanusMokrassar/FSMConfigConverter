@@ -41,7 +41,12 @@ val preCheck = fromConfig(
 )
 
 @Throws(IllegalArgumentException::class)
-fun compileFromConfig(config: String): List<PreviewState> {
+fun compileFromConfig(input: String): List<PreviewState> {
+    val config = if (input.last() == '\n') {
+        input
+    } else {
+        "$input\n"
+    }
     try {
         preCheck(config)
     } catch (e: Exception) {
