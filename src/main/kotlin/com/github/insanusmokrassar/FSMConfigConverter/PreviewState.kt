@@ -370,3 +370,146 @@ data class PreviewState internal constructor(
                 )
         }
 }
+
+class Declaration(
+        val name: String,
+        val previousDeclaration: Declaration? = null
+): State {
+
+    var nextDeclaration: Declaration? = null
+    var declarationStartState: CommonState = SimpleState(this, Regex("^$"))
+
+    val number: Int
+        get() = previousDeclaration ?. let { number + 1 } ?: 0
+
+    override val accept: Boolean = false
+    override val error: Boolean
+        get() = nextDeclaration != null && nextDeclaration?. name == name
+    override val next: Int? = declarationStartState.number
+    override val regex: Regex = declarationStartState.regex
+    override val stack: Boolean = false
+    override val action: (String) -> Unit = {}
+}
+
+fun Declaration.root(): Declaration {
+    var current = this
+    while (current.previousDeclaration != null) {
+        current = current.previousDeclaration ?: current
+    }
+    return current
+}
+
+fun Declaration.declarationsList(): List<Declaration> {
+    var current: Declaration? = root()
+    val result = ArrayList<Declaration>()
+    while (current != null) {
+        result.add(current)
+        current = current.nextDeclaration
+    }
+    return result
+}
+
+fun Declaration.usages(): List<Rule> {
+    val result = ArrayList<Rule>()
+    declarationsList().forEach {
+        it.declarationStartState.toStatesList().filter{
+            it is Rule && it.name == name
+        }.mapTo(
+                result,
+                { it as Rule }
+        )
+    }
+    return result
+}
+
+open class Rule(
+        val name: String,
+        declaration: Declaration
+) : CommonState(declaration) {
+    override var toRightInRow: CommonState? = null
+    override val accept: Boolean = false
+    override val error: Boolean = true
+    override val next: Int? = findDeclarations().first().number
+    override val regex: Regex
+        get() {
+            return Regex(
+                    findDeclarations().joinToString("|", "(", ")") {
+                        "(${it.regex.pattern})"
+                    }
+            )
+        }
+    override val stack: Boolean
+        get() = toRightInRow != null
+    override val isReturn: Boolean = false
+}
+
+fun Rule.findDeclarations(): List<Declaration> {
+    var current: Declaration? = declaration.root()
+    val result = ArrayList<Declaration>()
+    while (current != null) {
+        if (current.name == name) {
+            result.add(current)
+        }
+        current = current.nextDeclaration
+    }
+    return result
+}
+
+class SimpleState(
+        declaration: Declaration,
+        override val regex: Regex
+) : CommonState(
+        declaration
+) {
+    override var toRightInRow: CommonState? = null
+    override val isReturn: Boolean
+        get() = toRightInRow == null && canBeInStack()
+    override val accept: Boolean
+        get() = !(toLeftInRow == null && toRightInRow == null && !isReturn)
+    override val error: Boolean = true
+    override val next: Int?
+        get() = toRightInRow ?. number
+    override val stack: Boolean = false
+}
+
+abstract class CommonState(
+        val declaration: Declaration
+): State {
+    val toLeftInRow: CommonState?
+        get () {
+            return if (declaration.declarationStartState == this) {
+                null
+            } else {
+                var current = declaration.declarationStartState
+                while (current.toRightInRow != this) {
+                    current = current.toRightInRow ?: throw IllegalStateException(
+                            "This state is not in rule list of declaration. Check declaration setting"
+                    )
+                }
+                current
+            }
+        }
+    val number: Int
+        get() {
+            return toLeftInRow ?.let { number + 1 } ?: if (declaration.previousDeclaration == null) {
+                declaration.declarationsList().last().number + 1
+            } else {
+                declaration.previousDeclaration.declarationStartState.toStatesList().last().number + 1
+            }
+        }
+    abstract var toRightInRow: CommonState?
+    abstract val isReturn: Boolean
+    override val action: (String) -> Unit = {}
+}
+
+fun CommonState.canBeInStack(): Boolean = declaration.usages().firstOrNull { it.stack } != null
+
+fun CommonState.toStatesList(): List<CommonState> {
+    var current: CommonState? = declaration.declarationStartState
+    val result = ArrayList<CommonState>()
+    while (current != null) {
+        result.add(current)
+        current = current.toRightInRow
+    }
+    return result
+}
