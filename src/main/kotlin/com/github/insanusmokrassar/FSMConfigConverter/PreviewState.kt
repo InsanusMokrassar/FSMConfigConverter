@@ -1,6 +1,5 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
-import com.github.insanusmokrassar.FSM.core.SimpleState
 import com.github.insanusmokrassar.FSM.core.State
 import com.github.insanusmokrassar.FSM.core.fromConfig
 import com.github.insanusmokrassar.IObjectKRealisations.JSONIObject
@@ -355,21 +354,23 @@ data class PreviewState internal constructor(
         return preStates
     }
 
-    val toFSMState: State?
-        get() {
-            return SimpleState(
-                    isAccept,
-                    isError,
-                    isStack,
-                    if (regex.isEmpty()) {
-                        Regex("\\z")
-                    } else {
-                        Regex(regex)
-                    },
-                    nextState?.number
-                )
-        }
+//    val toFSMState: State?
+//        get() {
+//            return SimpleState(
+//                    isAccept,
+//                    isError,
+//                    isStack,
+//                    if (regex.isEmpty()) {
+//                        Regex("\\z")
+//                    } else {
+//                        Regex(regex)
+//                    },
+//                    nextState?.number
+//                )
+//        }
 }
+
+//---------------------------------------------------------------------------
 
 class Declaration(
         val name: String,
@@ -457,10 +458,19 @@ fun Rule.findDeclarations(): List<Declaration> {
 
 class SimpleState(
         declaration: Declaration,
-        override val regex: Regex
+        private val realRegex: Regex
 ) : CommonState(
         declaration
 ) {
+    override val regex: Regex
+        get() {
+            return if (isEpsilon()) {
+                Regex(calculateRegexForEpsilon() ?: "")
+            } else {
+                realRegex
+            }
+        }
+
     override var toRightInRow: CommonState? = null
     override val isReturn: Boolean
         get() = toRightInRow == null && canBeInStack()
@@ -471,6 +481,8 @@ class SimpleState(
         get() = toRightInRow ?. number
     override val stack: Boolean = false
 }
+
+fun SimpleState.isEpsilon(): Boolean = toRightInRow == null && toLeftInRow == null
 
 abstract class CommonState(
         val declaration: Declaration
@@ -512,4 +524,17 @@ fun CommonState.toStatesList(): List<CommonState> {
         current = current.toRightInRow
     }
     return result
+}
+
+fun Rule.calculateRegexForEpsilon(
+        wasIn: MutableList<CommonState> = ArrayList()
+): String? {
+    if (wasIn.contains(this)) {
+        return ""
+    }
+    wasIn.add(this)
+    return toRightInRow ?. regex ?. pattern
+            ?: declaration
+            .usages().mapNotNull { it.calculateRegexForEpsilon(wasIn) }
+            .joinToString("|", "(", ")")
 }
