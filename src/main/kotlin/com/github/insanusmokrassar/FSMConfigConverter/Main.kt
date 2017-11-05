@@ -1,6 +1,8 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
+import com.github.insanusmokrassar.FSM.core.State
 import com.github.insanusmokrassar.FSM.core.toConfigString
+import com.github.insanusmokrassar.IObjectK.interfaces.IObject
 import java.io.File
 import java.util.*
 
@@ -19,9 +21,9 @@ private val interactiveMode = {
     while (interactiveInputCompleteRegex.find(config) == null) {
         config += "${scanner.nextLine()}\n"
     }
-    val preStates = compileFromConfig(config)
-    println(getContent("Interactive", preStates))
-    println(getConfig(preStates))
+    val compiled = compileFromConfig(config)
+    println(getContent("Interactive", compiled))
+    println(getConfig(compiled.get<Declaration>(lastDeclarationField).toStatesList()))
 }
 
 private val commands = mapOf(
@@ -34,9 +36,10 @@ private val commands = mapOf(
                     } else {
                         val inputFile = File(args[0])
                         val config = inputFile.readText()
-                        val preStates = compileFromConfig(config)
+                        val calcConfig = compileFromConfig(config)
+                        val states = calcConfig.get<Declaration>(lastDeclarationField).toStatesList()
 
-                        val tempContent = getContent(inputFile.nameWithoutExtension, preStates)
+                        val tempContent = getContent(inputFile.nameWithoutExtension, calcConfig)
                         val tempFile = File(inputFile.parent, "temp_${inputFile.nameWithoutExtension}.md")
                         if (tempFile.exists()) {
                             tempFile.delete()
@@ -49,7 +52,7 @@ private val commands = mapOf(
                             outputFile.delete()
                         }
                         outputFile.createNewFile()
-                        outputFile.appendText(getConfig(preStates))
+                        outputFile.appendText(getConfig(states))
                     }
                 }
         ),
@@ -68,10 +71,10 @@ private val commands = mapOf(
 )
 
 fun main(args: Array<String>) {
-    try {
-        commands[args[0]]!!(args)
-    } catch (e: Exception){
+    if (args.isEmpty()) {
         commands[null]!!(args)
+    } else {
+        commands[args[0]]!!(args)
     }
 }
 
@@ -79,43 +82,30 @@ fun getHelp(): String {
     return "Usage:\n'cmd <input file path>'\n'-i' or '--interactive' for use interactive mod"
 }
 
-fun getContent(statesName: String, previewStates: List<PreviewState>): String {
+fun getContent(statesName: String, input: IObject<Any>): String {
+    val states = input.get<Declaration>(lastDeclarationField).toStatesList()
+    val numbered = input.get<String>(numbered)
+    val unNumbered = input.get<String>(unNumbered)
     val builder = StringBuilder()
     builder.append("# $statesName\n\n")
-    builder.append("```\n${getRules(false, previewStates)}\n\n${getRules(true, previewStates)}\n```\n\n")
+    builder.append("```\n\n$numbered\n\n$unNumbered\n\n```\n\n")
     builder.append("| N | Accept | Error | Return | Stack | Next | Regex |\n")
     builder.append("|---|--------|-------|--------|-------|------|-------|\n")
-    previewStates.forEach {
-        builder.append("| ${it.number} | ${it.isAccept} | ${it.isError} | ${it.isReturn} | ${it.isStack} " +
-                "| ${if (it.nextState == null) "-" else it.nextState!!.number.toString()} | ${it.regex} |\n")
+    states.forEachIndexed {
+        index, it ->
+        builder.append("| ${index} | ${it.accept} | ${it.error} | ${it.next == null} | ${it.stack} " +
+                "| ${if (it.next == null) "-" else it.next.toString()} | ${it.regex} |\n")
     }
     return builder.toString()
 }
 
-fun getConfig(preStates: List<PreviewState>): String {
+fun getConfig(states: List<State>): String {
     val configBuilder = StringBuilder()
     configBuilder.append("[")
-    preStates.forEach {
+    states.forEach {
         configBuilder.append(
-                "${it.toFSMState!!.toConfigString()},"
+                "${it.toConfigString()},"
         )
     }
     return configBuilder.toString().replace(Regex(",$"), "]\n")
-}
-
-fun getRules(isNumeric: Boolean, previewStates: List<PreviewState>): String {
-    val builder = StringBuilder()
-    val definitions = previewStates.filter { it.isDefinition }
-    definitions.forEach {
-        var current: PreviewState? = it
-        while (current != null) {
-            builder.append(current.toString(isNumeric))
-            if (current.isDefinition) {
-                builder.append("::=")
-            }
-            current = current.toRightInRow
-        }
-        builder.append("\n")
-    }
-    return builder.toString()
 }

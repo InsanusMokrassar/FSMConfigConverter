@@ -4,7 +4,24 @@ import com.github.insanusmokrassar.FSM.core.State
 import com.github.insanusmokrassar.FSM.core.StateAction
 import com.github.insanusmokrassar.FSM.core.defaultAction
 
-private val emptyRegex = Regex("^$")
+val emptyRegex = Regex("^$")
+val redundantOrRegex = Regex("\\|{2,}")
+val redundantRegex = Regex("\\(\\|*\\)")
+val redundantOrInTheEndRegex = Regex("\\|+\\)")
+
+private fun String.clearRegex(): String {
+    var regex = this
+    while (redundantRegex.find(regex) != null) {
+        regex = redundantRegex.replace(regex, "")
+        if (redundantOrRegex.find(regex) != null) {
+            regex = redundantOrRegex.replace(regex, "|")
+        }
+        if (redundantOrInTheEndRegex.find(regex) != null) {
+            regex = redundantOrInTheEndRegex.replace(regex, ")")
+        }
+    }
+    return regex
+}
 
 class Declaration(
         val name: String,
@@ -15,32 +32,32 @@ class Declaration(
     var declarationStartState: CommonState? = null
 
     val number: Int
-        get() = previousDeclaration ?. let { number + 1 } ?: 0
+        get() = previousDeclaration ?. let { it.number + 1 } ?: 0
 
     override val accept: Boolean = false
     override val error: Boolean
-        get() = nextDeclaration != null && nextDeclaration?. name == name
-    override val next: Int? = declarationStartState ?. number
-    override val regex: Regex = declarationStartState ?. regex ?: emptyRegex
+        get() = nextDeclaration ?. name != name
+    override val next: Int?
+        get() = declarationStartState ?. number
+    override val regex: Regex
+        get() = declarationStartState ?. regex ?: emptyRegex
     override val stack: Boolean = false
     override val action: StateAction = defaultAction
 
     fun addRule(name: String) {
-        val rule = Rule(name, this)
-        declarationStartState ?. let {
-            it.lastState().toRightInRow = rule
-            return
-        }
-        declarationStartState = rule
+        addState(Rule(name, this))
     }
 
     fun addSimpleState(regex: Regex) {
-        val state = SimpleState(regex, this)
+        addState(SimpleState(regex, this))
+    }
+
+    private fun addState(state: CommonState) {
         declarationStartState ?. let {
             it.lastState().toRightInRow = state
-            return
-        }
-        declarationStartState = state
+        } ?: {
+            declarationStartState = state
+        }()
     }
 }
 
@@ -93,15 +110,14 @@ open class Rule(
 ) : CommonState(declaration) {
     override val accept: Boolean = false
     override val error: Boolean = true
-    override val next: Int? = findDeclarations().first().number
+    override val next: Int?
+        get() = findDeclarations().first().number
     override val regex: Regex
-        get() {
-            return Regex(
-                    findDeclarations().joinToString("|", "(", ")") {
-                        "(${it.regex.pattern})"
-                    }
-            )
-        }
+        get() = Regex(
+                findDeclarations().joinToString("|", "(", ")") {
+                    "(${it.regex.pattern})"
+                }.clearRegex()
+        )
     override val stack: Boolean
         get() = toRightInRow != null
     override val isReturn: Boolean = false
@@ -127,8 +143,12 @@ class SimpleState(
 ) {
     override val regex: Regex
         get() {
-            return if (isEpsilon()) {
-                Regex(calculateRegexForEpsilon() ?: "")
+            return if (isEpsilon) {
+                var regex = calculateRegexForEpsilon() ?. clearRegex() ?: ""
+                if (regex.isEmpty()) {
+                    regex = emptyRegex.pattern
+                }
+                Regex(regex)
             } else {
                 realRegex
             }
@@ -137,14 +157,17 @@ class SimpleState(
     override val isReturn: Boolean
         get() = toRightInRow == null && canBeInStack()
     override val accept: Boolean
-        get() = !(toLeftInRow == null && toRightInRow == null && !isReturn)
+        get() = !(isEpsilon && isReturn)
     override val error: Boolean = true
     override val next: Int?
         get() = toRightInRow ?. number
     override val stack: Boolean = false
-}
 
-fun SimpleState.isEpsilon(): Boolean = toRightInRow == null && toLeftInRow == null
+    val isEpsilon: Boolean
+        get() = realRegex.pattern == emptyRegex.pattern
+                && toRightInRow == null
+                && toLeftInRow == null
+}
 
 abstract class CommonState(
         val declaration: Declaration
@@ -153,18 +176,18 @@ abstract class CommonState(
         private set
     val number: Int
         get() {
-            return toLeftInRow ?.let { number + 1 } ?: if (declaration.previousDeclaration == null) {
+            return toLeftInRow ?.let { it.number + 1 } ?: if (declaration.previousDeclaration == null) {
                 declaration.declarationsList().last().number + 1
             } else {
                 declaration.previousDeclaration.declarationStartState ?. let {
-                    statesRowList().last().number + 1
+                    it.statesRowList().last().number + 1
                 } ?: -1
             }
         }
     var toRightInRow: CommonState? = null
         set (value) {
             value ?. let {
-                toLeftInRow = this
+                it.toLeftInRow = this
             } ?: field ?. let {
                 if (it.toLeftInRow == this) {
                     it.toLeftInRow = null
