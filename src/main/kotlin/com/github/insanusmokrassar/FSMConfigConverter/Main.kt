@@ -2,6 +2,11 @@ package com.github.insanusmokrassar.FSMConfigConverter
 
 import com.github.insanusmokrassar.FSM.core.State
 import com.github.insanusmokrassar.FSM.core.toConfigString
+import com.github.insanusmokrassar.FSMConfigConverter.actions.lastDeclarationField
+import com.github.insanusmokrassar.FSMConfigConverter.actions.numbered
+import com.github.insanusmokrassar.FSMConfigConverter.actions.unNumbered
+import com.github.insanusmokrassar.FSMConfigConverter.models.Declaration
+import com.github.insanusmokrassar.FSMConfigConverter.models.toStatesList
 import com.github.insanusmokrassar.IObjectK.interfaces.IObject
 import java.io.File
 import java.util.*

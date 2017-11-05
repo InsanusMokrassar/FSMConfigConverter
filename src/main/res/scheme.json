@@ -133,7 +133,7 @@
       "((:)|(((((([<])))|([\\n])|(^$)))))",
       8,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.DeclarationCreator"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.creators.DeclarationCreator"
       }
     ],
     [
@@ -164,7 +164,7 @@
       "^$",
       null,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ExpressionComplete"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ExpressionComplete"
       }
     ],
     [
@@ -195,7 +195,7 @@
       "\\\\",
       27,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "name"
       }
     ],
@@ -220,7 +220,7 @@
       "[^>]",
       30,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "name"
       }
     ],
@@ -245,7 +245,7 @@
       ".",
       null,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "name"
       }
     ],
@@ -284,7 +284,7 @@
       "((((([<])))|([\\n])|(^$)))",
       null,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.EmptyStateCreator"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.creators.EmptyStateCreator"
       }
     ],
     [
@@ -301,7 +301,7 @@
       "(((([<])))|((([\\[])))|([^\\n])|((((((([<])))|([\\n])|(^$))))))",
       10,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.RuleCreator"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.creators.RuleCreator"
       }
     ],
     [
@@ -318,7 +318,7 @@
       "(((([<])))|((([\\[])))|([^\\n])|((((((([<])))|([\\n])|(^$))))))",
       10,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.StateCreator"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.creators.StateCreator"
       }
     ],
     [
@@ -328,7 +328,7 @@
       "[^\\n]",
       43,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "regex"
       }
     ],
@@ -339,7 +339,7 @@
       "(((([<])))|((([\\[])))|([^\\n])|((((((([<])))|([\\n])|(^$))))))",
       10,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.StateCreator"
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.creators.StateCreator"
       }
     ],
     [
@@ -356,7 +356,7 @@
       "[\\[]",
       46,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "regex"
       }
     ],
@@ -374,7 +374,7 @@
       "[\\u005D]",
       null,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "regex"
       }
     ],
@@ -385,7 +385,7 @@
       "[^\\u005D]",
       49,
       {
-        "package": "com.github.insanusmokrassar.FSMConfigConverter.ReadInField",
+        "package": "com.github.insanusmokrassar.FSMConfigConverter.actions.ReadInField",
         "config": "regex"
       }
     ],

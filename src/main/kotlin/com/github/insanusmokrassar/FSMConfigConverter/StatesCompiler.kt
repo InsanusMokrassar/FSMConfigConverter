@@ -1,6 +1,7 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
 import com.github.insanusmokrassar.FSM.core.fromConfig
+import com.github.insanusmokrassar.FSMConfigConverter.models.Declaration
 import com.github.insanusmokrassar.IObjectK.interfaces.IObject
 import com.github.insanusmokrassar.IObjectK.realisations.SimpleIObject
 import com.github.insanusmokrassar.IObjectKRealisations.JSONIObject
