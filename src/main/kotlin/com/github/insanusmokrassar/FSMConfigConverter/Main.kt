@@ -41,18 +41,26 @@ private val fileMode = {
     if (args.isEmpty()) {
         interactiveMode(args)
     } else {
-        val inputFile = File(args[0])
+        val inputFile = File(args[1])
         val config = inputFile.readText()
         val descriptor = FSMRulesDescriptor(config)
 
-        val tempFile = File(inputFile.parent, "temp_${inputFile.nameWithoutExtension}.md")
+        val tempFile = if (args.size > 2) {
+            File(args[2])
+        } else {
+            File(inputFile.parent, "temp_${inputFile.nameWithoutExtension}.md")
+        }
         if (tempFile.exists()) {
             tempFile.delete()
         }
         tempFile.createNewFile()
         tempFile.appendText(descriptor.markdownContent)
 
-        val outputFile = File(inputFile.parent, "out_${inputFile.nameWithoutExtension}.json")
+        val outputFile = if (args.size > 3) {
+            File(args[3])
+        } else {
+            File(inputFile.parent, "out_${inputFile.nameWithoutExtension}.json")
+        }
         if (outputFile.exists()) {
             outputFile.delete()
         }
@@ -119,8 +127,12 @@ fun getNextCommandWithArgs(args: MutableList<String>): Array<String> {
 }
 
 fun getHelp(): String {
-    return "Usage:\n'cmd <input file path>'\n" +
-            "'-i' or '--interactive' for use interactive mod\n" +
-            "'-f' or '--file' for read from .scheme file and out into temp_*.md and out_*.json files\n" +
-            "'-v' or '--verbose' for enabling verbose mode\n"
+    return "Usage:\n" +
+            "'-i' or '--interactive'\n" +
+            "    for use interactive mod\n" +
+            "'-f' or '--file'    Format: -(f|-file) INPUT_PATH [TEMP_PATH [OUTPUT_PATH]]\n" +
+            "    Here TEMP_PATH - path to file with markdown content, OUTPUT_PATH - path to .json output file\n" +
+            "    for read from .scheme file and out into temp and out files\n" +
+            "'-v' or '--verbose'\n" +
+            "    for enabling verbose mode\n"
 }
