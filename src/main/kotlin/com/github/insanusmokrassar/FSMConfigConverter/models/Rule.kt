@@ -8,12 +8,19 @@ open class Rule(
     override val error: Boolean = true
     override val next: Int?
         get() = findDeclarations().first().number
+    private var calculatedRegex: Regex? = null
     override val regex: Regex
-        get() = Regex(
-                findDeclarations().joinToString("|", "(", ")") {
-                    "(${it.regex.pattern})"
-                }.clearRegex()
-        )
+        get() {
+            if (calculatedRegex == null) {
+                calculatedRegex = Regex("")
+                calculatedRegex = Regex(
+                        findDeclarations().joinToString("|", "(", ")") {
+                            "(${it.regex.pattern})"
+                        }.clearRegex()
+                )
+            }
+            return calculatedRegex!!
+        }
     override val stack: Boolean
         get() = toRightInRow != null
     override val isReturn: Boolean = false
