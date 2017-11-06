@@ -1,9 +1,9 @@
 package com.github.insanusmokrassar.FSMConfigConverter.actions
 
-import com.github.insanusmokrassar.FSM.core.SimpleState
 import com.github.insanusmokrassar.FSM.core.StateAction
 import com.github.insanusmokrassar.FSMConfigConverter.models.Declaration
 import com.github.insanusmokrassar.FSMConfigConverter.models.Rule
+import com.github.insanusmokrassar.FSMConfigConverter.models.SimpleState
 import com.github.insanusmokrassar.FSMConfigConverter.models.declarationsList
 import com.github.insanusmokrassar.IObjectK.interfaces.IObject
 import com.github.insanusmokrassar.IObjectK.interfaces.has
