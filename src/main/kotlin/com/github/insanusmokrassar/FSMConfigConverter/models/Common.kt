@@ -17,10 +17,14 @@ val variantsRegex = Regex("\\[((\\\\\\[)|[^\\[)\\]])*\\]")
 val variantsStartRegex = Regex("^\\[")
 val variantsEndRegex = Regex("\\]$")
 
-val afterVariantsRegex = Regex("([^\\\\]|[\\\\].)")
+val afterVariantsRegex = Regex("\\\\?.")
 
 internal fun String.clearRegex(): String {
     var regex = this
+    val containsEnd = contains(emptyRegex.pattern)
+    if (containsEnd) {
+        regex = replace(emptyRegex.pattern, "")
+    }
     while (redundantRegex.find(regex) != null) {
         regex = redundantRegex.replace(regex, "")
         if (redundantOrRegex.find(regex) != null) {
@@ -34,37 +38,40 @@ internal fun String.clearRegex(): String {
         }
     }
     val groups = HashSet<String>()
-    groupsRegex.findAll(regex).map { it.groupValues }.forEach {
-        it.filter {
-            it.isNotEmpty()
-        }.map {
-            if (groupsRegex.find(it) != null) {
-                groupEndRegex.replaceFirst(
-                        groupBeginRegex.replaceFirst(it, ""),
-                        ""
-                )
-            } else {
-                it
+    groupsRegex.findAll(regex).map { it.groupValues.first() }.filter {
+        it.isNotEmpty() && it != "()"
+    }.map {
+        if (groupsRegex.find(it) != null) {
+            var currentRegex = groupEndRegex.replaceFirst(
+                    groupBeginRegex.replaceFirst(it, ""),
+                    ""
+            )
+            try {
+                Regex("[$currentRegex]")
+                currentRegex
+            } catch (e: PatternSyntaxException) {
+                currentRegex = "\\$currentRegex"
+                Regex("[$currentRegex]")
+                currentRegex
             }
-        }.map {
-            if (variantsRegex.find(it) != null) {
-                val variants = HashSet<String>()
-                afterVariantsRegex.findAll(
-                        variantsEndRegex.replaceFirst(
-                            variantsStartRegex.replaceFirst(
-                                    it,
-                                    ""
-                            ),
+        } else {
+            it
+        }
+    }.map {
+        if (variantsRegex.find(it) != null) {
+            variantsEndRegex.replaceFirst(
+                    variantsStartRegex.replaceFirst(
+                            it,
                             ""
-                        )
-                ).forEach {
-                    variants.addAll(it.groupValues)
-                }
-                variants.toTypedArray()
-            } else {
-                arrayOf(it)
-            }
-        }.forEach {
+                    ),
+                    ""
+            )
+        } else {
+            it
+        }
+    }.forEach {
+        groups.add(it)
+    }/*.forEach {
             groups.addAll(
                     it.filter {
                         it.isNotEmpty()
@@ -82,11 +89,21 @@ internal fun String.clearRegex(): String {
                         }
                     }
             )
-        }
+        }*/
+    var group = groups.joinToString("", "[", "]")
+    if (containsEnd && groups.isNotEmpty()) {
+        group = "(($group)|(${emptyRegex.pattern}))"
     }
-    val group = groups.joinToString("", "[", "]")
     Logger.getGlobal().info(
             "Groups of regex:\n$group"
     )
-    return Regex(group).pattern
+    return try {
+        Regex(group).pattern
+    } catch (e: PatternSyntaxException) {
+        if (groups.isEmpty()) {
+            emptyRegex.pattern
+        } else {
+            throw e
+        }
+    }
 }
