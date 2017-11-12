@@ -1,20 +1,19 @@
 package com.github.insanusmokrassar.FSMConfigConverter
 
 import com.github.insanusmokrassar.FSM.core.State
-import com.github.insanusmokrassar.FSM.core.fromConfig
-import com.github.insanusmokrassar.FSM.core.toConfigString
+import com.github.insanusmokrassar.FSM.extensions.createRunnerFromConfig
+import com.github.insanusmokrassar.FSM.extensions.toConfigObject
 import com.github.insanusmokrassar.FSMConfigConverter.actions.lastDeclarationField
 import com.github.insanusmokrassar.FSMConfigConverter.actions.numbered
 import com.github.insanusmokrassar.FSMConfigConverter.actions.unNumbered
 import com.github.insanusmokrassar.FSMConfigConverter.models.Declaration
 import com.github.insanusmokrassar.FSMConfigConverter.models.root
 import com.github.insanusmokrassar.FSMConfigConverter.models.toStatesList
-import com.github.insanusmokrassar.IObjectK.interfaces.IObject
 import com.github.insanusmokrassar.IObjectK.interfaces.has
 import com.github.insanusmokrassar.IObjectK.realisations.SimpleIObject
 import com.github.insanusmokrassar.IObjectKRealisations.JSONIObject
 
-private val preCheck = fromConfig(
+private val preCheck = createRunnerFromConfig(
         JSONIObject(Declaration::class.java.classLoader.getResourceAsStream("scheme.json"))
 )
 
@@ -70,7 +69,7 @@ class FSMRulesDescriptor(input: String) {
             configBuilder.append("[")
             states.forEach {
                 configBuilder.append(
-                        "${it.toConfigString()},"
+                        "${it.toConfigObject(states.indexOf(it).toString())},"
                 )
             }
             return configBuilder.toString().replace(Regex(",$"), "]\n")

@@ -17,8 +17,6 @@ val variantsRegex = Regex("\\[((\\\\\\[)|[^\\[)\\]])*\\]")
 val variantsStartRegex = Regex("^\\[")
 val variantsEndRegex = Regex("\\]$")
 
-val afterVariantsRegex = Regex("\\\\?.")
-
 internal fun String.clearRegex(): String {
     var regex = this
     val containsEnd = contains(emptyRegex.pattern)
