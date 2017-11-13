@@ -3,6 +3,7 @@ package com.github.insanusmokrassar.FSMConfigConverter
 import java.io.File
 import java.util.*
 import java.util.logging.LogManager
+import java.util.logging.Logger
 import kotlin.collections.ArrayList
 
 private val showHelp = {
@@ -66,6 +67,10 @@ private val fileMode = {
         }
         outputFile.createNewFile()
         outputFile.appendText(descriptor.statesConfig)
+
+        Logger.getGlobal().info("Created files:\n" +
+                "Markdown temp file: ${tempFile.absolutePath}\n" +
+                "Output json file: ${outputFile.absolutePath}\n")
     }
 }
 
